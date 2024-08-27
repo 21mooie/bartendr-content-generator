@@ -3,7 +3,9 @@ const axios = require('axios');
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
 const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash"});
 const OpenAI = require("openai");
+const debug = require('debug')('app:script');
 
+const Users = require('./Users');
 const interact = require("./interact");
 const { statusRequestConfig } = require("./utils");
 
@@ -44,6 +46,11 @@ async function run() {
 
     while (true) {
         // create some new users
+        const newUsers = await new Promise((resolve) => {
+            setTimeout(() => {
+                Users.createNewUsers(3).then(result => resolve(result));
+            }, 3000);
+        });
 
         // pick some existing users/new users
         const uids = ['f4f85803-e187-4270-8323-42bc69410cca'];
