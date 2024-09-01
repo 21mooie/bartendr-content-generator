@@ -45,15 +45,25 @@ async function run() {
     }
 
     while (true) {
+        const time = +process.env.TIME_TO_WAIT;
+
         // create some new users
         const newUsers = await new Promise((resolve) => {
             setTimeout(() => {
                 Users.createNewUsers(3).then(result => resolve(result));
-            }, 3000);
+            }, time);
         });
 
         // pick some existing users/new users
-        const uids = ['f4f85803-e187-4270-8323-42bc69410cca'];
+        const users = await new Promise((resolve) => {
+            setTimeout(() => {
+                Users.getUsers(10, 'random', 'isBot').then(result => resolve(result));
+            }, time);
+        });
+
+        users.push(...newUsers);
+        debug(users.length);
+
         
         // create content with users
         // await new Promise(resolve => {

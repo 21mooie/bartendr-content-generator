@@ -17,15 +17,16 @@ class Users {
     async createNewUsers(numUsers){
         const promises = [];
         for (let i=0; i<numUsers; i++){
-            // TODO: set timeout so each one isn't created right after another
             promises.push(new Promise((resolveUser, rejectUser) => {
-                this.createUser(resolveUser, rejectUser);
+                setTimeout(() => {
+                    this.createUser(resolveUser, rejectUser);
+                }, 1000);
             }));
         }
 
         return Promise.allSettled(promises)
             .then(results => {
-                return results.filter((result) => result.status === 'fulfilled').map((result) => result.value);
+                return results.filter((result) => result.status === 'fulfilled' && result.value.uid).map((result) => result.value);
             }).catch(err => debug(`Line: ${linenumber()}\nError creating users ${err}`));
     }
 
@@ -51,7 +52,7 @@ class Users {
                 data = response.data;
             } catch (err) {
                 debug(`Line: ${linenumber()}\nError registering user\n${err}`);
-                throw err;
+                return { state: {} };
             }
             return data;
         }
@@ -68,7 +69,7 @@ class Users {
 
             attributeList.push(attributeEmail);
             
-            // TODO: generage better usernames
+            // TODO: generate better usernames
             const username = generateUsername("",3,20);
             
             this.cognitoUserPool.signUp(username, 'Password1!', attributeList, null, async (err, result) => {
@@ -78,13 +79,31 @@ class Users {
                     return;
                 }
                 const cognitoUser = result.user;
-                debug('User signed to cognito' + cognitoUser.getUsername());
                 const response = await registerUser(cognitoUser.getUsername(), email);
+                debug('User registered: ' + cognitoUser.getUsername());
                 resolveUser(response.state);
             });
         };
 
         createAWSCognitoUser();
+    }
+
+    async getUsers(numUsers, type, criteria) {
+        let result;
+        try {
+            result = await axios.get(`${this.bartendrUrl}/users/multiple`, {
+                params: {
+                    numUsers,
+                    type,
+                    criteria,
+                },
+                headers: {...statusRequestConfig.headers}
+            });
+        } catch (err) {
+            debug(`Line: ${linenumber()}\nError getting users\n${err}`);
+            return [];
+        }
+        return result.data;
     }
 }
 
