@@ -5,4 +5,8 @@ const statusRequestConfig = {
     }
 };
 
+// max exclusive
+const getRandomInt = (max) => Math.floor(Math.random() * max);
+
 exports.statusRequestConfig = statusRequestConfig;
+exports.getRandomInt = getRandomInt;
