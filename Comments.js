@@ -76,6 +76,43 @@ class Comments {
         }
         return responses;
     }
+
+    async getAllStatuses(users) {
+        const promises = [];
+        users.forEach((user) => {
+            promises.push(new Promise((resolveStatus) => {
+                this.getStatuses(user, resolveStatus);
+            }));
+        });
+        return Promise.allSettled(promises)
+            .then(results => {
+                const data = results.filter((result) => result.status === 'fulfilled' && result.value.statuses.length > 0).map(result => result.value);
+                const statuses = data.map(value => value.statuses[getRandomInt(value.statuses.length)]);
+                return statuses;
+            })
+            .catch(err => debug(`Line: ${linenumber()}\nError getting statuses ${err}`) )
+    }
+
+    async getStatuses(user, resolveStatus) {
+        let data;
+        try {
+            const response = await axios.get(
+                `${this.bartendrUrl}/users/statuses`,
+                {
+                    params: {
+                        statusOwnerUid: user.uid,
+                        offset: 0,
+                        limit: 10,
+                    },
+                    headers: { ...statusRequestConfig.headers },
+                });
+            data = response.data;
+        } catch (err) {
+            debug(`Line: ${linenumber()}\nError getting status\n${err}\nUser: ${JSON.stringify(user)}`);
+            data = { status: [], endOfData: true };
+        }
+        resolveStatus(data);
+    }
 }
 
 module.exports = new Comments();

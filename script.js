@@ -35,6 +35,11 @@ async function run() {
             }, time)
         });
 
+        const statuses = await new Promise(resolve => {
+            setTimeout(() => {
+                Comments.getAllStatuses(users).then(result => resolve(result));
+            }, time);
+        })
 
         // await new Promise(resolve => {
         //     setTimeout(() => {
