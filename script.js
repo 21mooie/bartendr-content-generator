@@ -9,14 +9,6 @@ const bartendrUrl = process.env.BARTENDR_URL;
 
 async function run() {
     while (true) {
-        const time = +process.env.TIME_TO_WAIT;
-
-        // create some new users
-        const newUsers = await new Promise((resolve) => {
-            setTimeout(() => {
-                Users.createNewUsers(3).then(result => resolve(result));
-            }, time);
-        });
 
         // pick some existing users/new users
         const users = await new Promise((resolve) => {
@@ -25,45 +17,58 @@ async function run() {
             }, time);
         });
 
-        users.push(...newUsers);
+        // create some new users
+        if(!dryrun) {
+            const newUsers = await new Promise((resolve) => {
+                setTimeout(() => {
+                    Users.createNewUsers(3).then(result => resolve(result));
+                }, time);
+            });
+            users.push(...newUsers);    
+        }
 
-        
-        // create content with users
-        const statuses = await new Promise(resolve => {
-            setTimeout(() => {
-                Comments.makeUsersPostStatuses(users).then(result => resolve(result));
-            }, time)
-        });
+        // create content to post for cocktail comments
+        const comments = [];
 
+        // create statuses with users
         const statuses = await new Promise(resolve => {
             setTimeout(() => {
                 Comments.getAllStatuses(users).then(result => resolve(result));
             }, time);
         })
 
+        if(!dryrun) {
+            const newStatuses = await new Promise(resolve => {
+                setTimeout(() => {
+                    Comments.makeUsersPostStatuses(users).then(result => resolve(result));
+                }, time)
+            });
+            statuses.push(...newStatuses);
+        }
+        debug(statuses);
+
+
+        // interact with content
         // await new Promise(resolve => {
         //     setTimeout(() => {
-        //         generateAndSaveContent();
+        //         interact(uids, comments);
         //         resolve();
         //     }, 5000)
         // });
 
-        // pick some new content and some existing content
-        const cocktailCommentsResponse = await axios.get(`${bartendrUrl}/cocktail/178332/comment/?offset=0&limit=10`, statusRequestConfig);
-        const comments = cocktailCommentsResponse.data.results;
 
-        // interact with content
-        await new Promise(resolve => {
-            setTimeout(() => {
-                interact(uids, comments);
-                resolve();
-            }, 5000)
-        });
+
+
+
 
         // reply to some existing content
     }
 }
 
-
+const dryrun = process.argv[2] === '--dryrun';
+if(dryrun){
+    debug('Dryrun running...');
+}
+const time = +process.env.TIME_TO_WAIT;
 run();
 
