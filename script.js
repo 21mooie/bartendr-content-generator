@@ -2,7 +2,7 @@ const axios = require('axios');
 const debug = require('debug')('app:script');
 
 const Users = require('./Users');
-const interact = require("./interact");
+const Interact = require("./Interact");
 const { statusRequestConfig } = require("./utils");
 const Comments = require("./Comments");
 const bartendrUrl = process.env.BARTENDR_URL;
@@ -55,6 +55,13 @@ async function run() {
         //         resolve();
         //     }, 5000)
         // });
+
+        await new Promise(resolve => {
+            setTimeout(() => {
+                Interact.makeUsersInteract(users, statuses);
+                resolve();
+            }, 5000)
+        });
 
 
 
