@@ -45,22 +45,13 @@ async function run() {
             });
             statuses.push(...newStatuses);
         }
-        debug(statuses);
-
 
         // interact with content
-        // await new Promise(resolve => {
-        //     setTimeout(() => {
-        //         interact(uids, comments);
-        //         resolve();
-        //     }, 5000)
-        // });
-
         await new Promise(resolve => {
             setTimeout(() => {
                 Interact.makeUsersInteract(users, statuses);
                 resolve();
-            }, 5000)
+            }, time)
         });
 
 
@@ -69,6 +60,12 @@ async function run() {
 
 
         // reply to some existing content
+        await new Promise(resolve => {
+            setTimeout(() => {
+                Comments.makeUsersReplyToComments(users, statuses);
+                resolve();
+            }, time);
+        });
     }
 }
 

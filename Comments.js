@@ -16,7 +16,7 @@ class Comments {
         const promises = [];
         statuses.forEach(status => {
             const user = users[getRandomInt(users.length)];
-            promises.push(new Promise((resolveStatus, rejectStatus) => this.postStatus(user, status, resolveStatus, rejectStatus)));           
+            promises.push(new Promise((resolveStatus, rejectStatus) => this.postStatus(user, status, null, null, user.uid, resolveStatus, rejectStatus)));           
         });
 
         return Promise.allSettled(promises)
@@ -24,25 +24,32 @@ class Comments {
             .catch(err => debug(`Line: ${linenumber()}\nError creating statuses ${err}`));
     }
 
-    async postStatus(user, status, resolveStatus, rejectStatus) {
+    async postStatus(user, status, replyTo, statusId, statusOwnerUid, resolveStatus, rejectStatus) {
         let data;
+        const params = {
+            statusOwnerUid,
+        };
+        if (statusId){
+            params.statusId = statusId;
+        }
         try {
             const result = await axios.post(
                 `${this.bartendrUrl}/users/status`,
                 {
                     content: status,
-                    replyTo: null,
+                    replyTo,
                     uid: user.uid,
                     isBot: true,
                 },
                 {
-                    params: { statusOwnerUid: user.uid },
+                    params,
                     headers: {...statusRequestConfig.headers},
                 }
             );
             data = result.data;
         } catch (err) {
-            debug(`Line: ${linenumber()}\nError adding status\n${err}\n Status: ${status}\nUser: ${JSON.stringify(user)}`);
+            const message = replyTo ? 'Error adding status reply' : 'Error adding status';
+            debug(`Line: ${linenumber()}\n${message}\n${err}\n Status: ${status}\nUser: ${JSON.stringify(user)}`);
             rejectStatus({});
         }
         resolveStatus(data);
@@ -68,12 +75,27 @@ class Comments {
             ];
             const prompt = prompts[getRandomInt(prompts.length)];
             const result = await model.generateContent(prompt);
-            const response = await result.response;
-            const text = response.text();
+            const text = result.response.text();
             responses = text.split('|').map(val => val.trim());
         } catch (err) {
             debug(`Line: ${linenumber()}\nError generating status\n${err}`);
         }
+        return responses;
+    }
+
+    async generateReplies(comments) {
+        let responses = [];
+        try {
+            let prompt = `Generate one reply a user may have to each to the following comments without asterisks and without stating the initial comment again and do not number the statuses:\n`;
+            comments.forEach(comment => prompt += `${comment.content}\n`);
+            const result = await model.generateContent(prompt);
+            const text = result.response.text();
+            responses = text.split('\n').map(val => val.trim());
+            responses.pop();
+        } catch(err){
+            debug(`Line: ${linenumber()}\nError generating reply\n${err}`);
+        }
+        debug(responses);
         return responses;
     }
 
@@ -112,6 +134,19 @@ class Comments {
             data = { status: [], endOfData: true };
         }
         resolveStatus(data);
+    }
+
+    async makeUsersReplyToComments(users, statuses) {
+        const replies = await this.generateReplies(statuses);
+        const promises = [];
+        replies.forEach((reply, idx) => {
+            const user = users[idx];
+            promises.push(new Promise((resolveStatus, rejectStatus) => this.postStatus(user, reply, statuses[idx].commentId, statuses[idx].statusId, statuses[idx].statusOwnerUid, resolveStatus, rejectStatus)));           
+        });
+
+        return Promise.allSettled(promises)
+            .then(results => results.filter((result) => result.status === 'fulfilled' && result.value.success === 'SUCCESSFULLY_POST_COMMENTS').map((result) => result.value))
+            .catch(err => debug(`Line: ${linenumber()}\nError creating statuses ${err}`));
     }
 }
 
