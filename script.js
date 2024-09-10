@@ -7,9 +7,8 @@ const { statusRequestConfig } = require("./utils");
 const Comments = require("./Comments");
 const bartendrUrl = process.env.BARTENDR_URL;
 
-async function run() {
-    while (true) {
-
+function run() {
+    setInterval(async () => {
         // pick some existing users/new users
         const users = await new Promise((resolve) => {
             setTimeout(() => {
@@ -55,10 +54,6 @@ async function run() {
         });
 
 
-
-
-
-
         // reply to some existing content
         await new Promise(resolve => {
             setTimeout(() => {
@@ -66,7 +61,7 @@ async function run() {
                 resolve();
             }, time);
         });
-    }
+    }, 1000);
 }
 
 const dryrun = process.argv[2] === '--dryrun';
