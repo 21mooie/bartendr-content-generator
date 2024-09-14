@@ -49,6 +49,7 @@ function run() {
         }
 
         // interact with content
+        if(!dryrun)
         await new Promise(resolve => {
             setTimeout(() => {
                 Interact.makeUsersInteract(users, statuses);
@@ -58,6 +59,7 @@ function run() {
 
 
         // reply to some existing content
+        if(!dryrun)
         await new Promise(resolve => {
             setTimeout(() => {
                 Comments.makeUsersReplyToComments(users, statuses);
