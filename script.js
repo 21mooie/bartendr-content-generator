@@ -15,7 +15,6 @@ function run() {
                 Users.getUsers(10, 'random', 'isBot').then(result => resolve(result));
             }, time);
         });
-
         // create some new users
         if(!dryrun) {
             const newUsers = await new Promise((resolve) => {
@@ -27,7 +26,11 @@ function run() {
         }
 
         // create content to post for cocktail comments
-        const comments = [];
+        const comments = await new Promise(resolve => {
+            setTimeout(() => {
+                Comments.getAllComments(users).then(result => resolve(result));
+            }, time);
+        });
 
         // create statuses with users
         const statuses = await new Promise(resolve => {
