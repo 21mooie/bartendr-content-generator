@@ -27,7 +27,10 @@ class Users {
         return Promise.allSettled(promises)
             .then(results => {
                 return results.filter((result) => result.status === 'fulfilled' && result.value.uid).map((result) => result.value);
-            }).catch(err => debug(`Line: ${linenumber()}\nError creating users ${err}`));
+            }).catch(err => {
+                debug(`Line: ${linenumber()}\nError creating users ${err}`);
+                return [];
+            });
     }
 
     createUser(resolveUser, rejectUser){

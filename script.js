@@ -32,6 +32,14 @@ function run() {
             }, time);
         });
 
+        if(!dryrun) {
+            const newComments = await new Promise(resolve => {
+                setTimeout(() => {
+                    Comments.makeUsersPostComments(users).then(result => resolve(result));
+                }, time)
+            });
+            comments.push(...newComments);
+        }
         // create statuses with users
         const statuses = await new Promise(resolve => {
             setTimeout(() => {
@@ -49,23 +57,37 @@ function run() {
         }
 
         // interact with content
-        if(!dryrun)
+        if(!dryrun) {
         await new Promise(resolve => {
             setTimeout(() => {
-                Interact.makeUsersInteract(users, statuses);
-                resolve();
+                    Interact.makeUsersInteract(users, statuses).then(() => resolve());
             }, time)
         });
 
+            await new Promise(resolve => {
+                setTimeout(() => {
+                    Interact.makeUsersInteract(users, comments).then(() => resolve());
+                }, time)
+            });
+        }
+
 
         // reply to some existing content
-        if(!dryrun)
+        if(!dryrun) {
         await new Promise(resolve => {
             setTimeout(() => {
                 Comments.makeUsersReplyToComments(users, statuses);
                 resolve();
             }, time);
         });
+
+            await new Promise(resolve => {
+                setTimeout(() => {
+                    Comments.makeUsersReplyToComments(users, comments);
+                    resolve();
+                }, time);
+            });
+        }
     }, 1000);
 }
 

@@ -12,7 +12,10 @@ class Comments {
     }
 
     async makeUsersPostStatuses(users) {
+        debug('Making users post statuses...');
         const statuses = await this.generateStatuses();
+        if (!statuses || statuses.length === 0)
+            return [];
         const promises = [];
         statuses.forEach(status => {
             const user = users[getRandomInt(users.length)];
@@ -21,7 +24,10 @@ class Comments {
 
         return Promise.allSettled(promises)
             .then(results => results.filter((result) => result.status === 'fulfilled' && result.value.success === 'SUCCESSFULLY_POST_COMMENTS').map((result) => result.value))
-            .catch(err => debug(`Line: ${linenumber()}\nError creating statuses ${err}`));
+            .catch(err => {
+                debug(`Line: ${linenumber()}\nError creating statuses ${err}`);
+                return [];
+            });
     }
 
     async postStatus(user, status, replyTo, statusId, statusOwnerUid, resolveStatus, rejectStatus) {
@@ -55,19 +61,65 @@ class Comments {
         resolveStatus(data);
     }
 
-    async generateAndSaveContent(){
-        async function generateContent() {
-            // const prompt = "Give me one sentence a user may write on a social media app about cocktails and nightlife and don't use any phrases such as  [name of cocktail]";
-            const prompt = "Write one comment a user may post about margaritas. The comment should be a story about their favorite time drinking this."
-            // const prompt = "Give me a couple prompts I can use to ask gemini ai to generate comments for a social media application"
-            // const prompt = `"I'm posting about [topic/event] on [social media platform].  Generate 5 comments that are [positive/negative/neutral] and focus on [specific aspect of the topic/event].  For example, use [keywords] and be [formal/informal/funny] in tone."`;
-            // const prompt = 'Write one post of what a user may post on a social media app and do not include hashtags'
+    async makeUsersPostComments(users) {
+        const promises = [];
+        for (let i=0; i<10; i++){
+            promises.push(new Promise((resolveStatus) => {
+                setTimeout(async () => {
+                    const drink = await this.findDrink()
+                    const comments = await this.postAllComments(users, getRandomInt(users.length), drink, null);
+                    resolveStatus(comments);
+                }, 5000);
+            }));
+        }
+        return Promise.allSettled(promises)
+            .then(results => {
+                const data = results.filter((result) => result.status === 'fulfilled' && result.value.length > 0).map(result => result.value);
+                const comments = data.map(value => value[getRandomInt(value.length)]);
+                return comments;
+            })
+            .catch(err => {
+                debug(`Line: ${linenumber()}\nError getting comments ${err}`);
+                return [];
+            });
+    }
 
+    async postComment(user, drink, content, replyTo) {
+        try {
+            const result = await axios.post(
+                `${this.bartendrUrl}/cocktail/${drink.idDrink}/comment`,
+                {
+                    content,
+                    replyTo,
+                    uid: user.uid,
+                },
+                statusRequestConfig,
+            );
+            return result.data;
+        } catch (err) {
+            debug(`Line: ${linenumber()}\nError posting comment\n${err}`);
+        }
+    }
+
+    async postAllComments(users, randomNumUsersToComment, drink, replyTo) {
+        try {
+            const comments = await this.generateComments(drink, randomNumUsersToComment);
+            if (!comments || comments.length === 0)
+                return [];
+            const promises = [];
+            for(let i=0; i<randomNumUsersToComment; i++) {
+                const user = users[i];
+                promises.push(new Promise((resolve) => this.postComment(user, drink, comments[i], replyTo).then(result => resolve(result)).catch(err => resolve({}))));
+            }
+            return Promise.allSettled(promises)
+                .then(results => results.filter((result) => result.status === 'fulfilled' && result.value.success === 'SUCCESSFULLY_POST_COMMENTS').map((result) => result.value.comment)
+                ).catch(err => debug(`Line: ${linenumber()}\nError posting all comments\n${err}`));
+        } catch (err) {
+            debug(`Line: ${linenumber()}\nError posting all comments\n${err}`);
         }
     }
 
     async generateStatuses(){
-        let responses = [];
         try {
             const prompts = [
                 "Give me ten different statuses a user may write on a social media app and be specific about any names used in the status but do not use asterisks and it is ok to use emojis but not in every status. Make sure each status has a | after it except the last one and do not number the statuses.",
@@ -76,30 +128,96 @@ class Comments {
             const prompt = prompts[getRandomInt(prompts.length)];
             const result = await model.generateContent(prompt);
             const text = result.response.text();
-            responses = text.split('|').map(val => val.trim());
+            const responses = text.split('|').map(val => val.trim());
+            return responses;
         } catch (err) {
             debug(`Line: ${linenumber()}\nError generating status\n${err}`);
         }
-        return responses;
+    }
+
+    async generateComments(drink, numComments) {
+        try {
+            const prompt = `Generate ${numComments} different social media users may have to say about the drink ${drink.strDrink} such as how much they like it, the first time they tasted it, different ways they like to make it, or a funny story they have where they were drinking it but do not use asterisks and it is ok to use emojis but not in every status. Make sure each comment has a | after it except the last one and do not number the comments.`;
+            const result = await model.generateContent(prompt);
+            const text = result.response.text();
+            return text.split('|').filter(val => val !== '').map(val => val.trim());
+        } catch (err) {
+            debug(`Line: ${linenumber()}\nError generating comments\n${err}`);
+        } 
     }
 
     async generateReplies(comments) {
-        let responses = [];
         try {
             let prompt = `Generate one reply a user may have to each to the following comments without asterisks and without stating the initial comment again and do not number the statuses:\n`;
             comments.forEach(comment => prompt += `${comment.content}\n`);
             const result = await model.generateContent(prompt);
             const text = result.response.text();
-            responses = text.split('\n').map(val => val.trim());
+            let responses = text.split('\n').map(val => val.trim());
             responses.pop();
+            return responses;
         } catch(err){
             debug(`Line: ${linenumber()}\nError generating reply\n${err}`);
         }
-        debug(responses);
-        return responses;
+    }
+
+    async getAllComments(users) {
+        debug('Requesting comments...')
+        const promises = [];
+        for (let i=0; i<10; i++){
+            promises.push(new Promise((resolveStatus) => {
+                setTimeout(async () => {
+                    const drink = await this.findDrink()
+                    let comments = await this.getComments(drink);
+                    if (comments.length < 10)
+                        comments = await this.postAllComments(users, getRandomInt(users.length), drink, null);
+                    resolveStatus(comments);
+                }, 5000);
+            }));
+        }
+        return Promise.allSettled(promises)
+            .then(results => {
+                const data = results.filter((result) => result.status === 'fulfilled' && result.value.length > 0).map(result => result.value);
+                const comments = data.map(value => value[getRandomInt(value.length)]);
+                return comments;
+            })
+            .catch(err => {
+                debug(`Line: ${linenumber()}\nError getting comments ${err}`);
+                return [];
+            });
+    }
+
+    async getComments(drink) {
+        try {
+            const result = await axios.get(
+                `${this.bartendrUrl}/cocktail/${drink.idDrink}/comment`,
+                {
+                    params: {
+                        offset: 0,
+                        limit: 10,
+                    },
+                    headers: { ...statusRequestConfig.headers },
+                }
+            );
+            return result.data.results;
+        } catch (err) {
+            debug(`Line: ${linenumber()}\nError getting comments\n${err}`);
+        }
+    }
+
+    async findDrink() {
+        try {
+            const response = await axios.get(
+                `${this.bartendrUrl}/cocktail`,
+                { headers: { ...statusRequestConfig.headers }, }
+            );
+            return response.data.drinks[0];
+        } catch (err){
+            debug(`Line: ${linenumber()}\nError getting drink\n${err}`);
+        }
     }
 
     async getAllStatuses(users) {
+        debug('Requesting Statuses...');
         const promises = [];
         users.forEach((user) => {
             promises.push(new Promise((resolveStatus) => {
@@ -112,7 +230,10 @@ class Comments {
                 const statuses = data.map(value => value.statuses[getRandomInt(value.statuses.length)]);
                 return statuses;
             })
-            .catch(err => debug(`Line: ${linenumber()}\nError getting statuses ${err}`) )
+            .catch(err => {
+                debug(`Line: ${linenumber()}\nError getting statuses ${err}`);
+                return [];
+            })
     }
 
     async getStatuses(user, resolveStatus) {
@@ -138,6 +259,8 @@ class Comments {
 
     async makeUsersReplyToComments(users, statuses) {
         const replies = await this.generateReplies(statuses);
+        if (!replies || replies.length === 0)
+            return [];
         const promises = [];
         replies.forEach((reply, idx) => {
             const user = users[idx];
