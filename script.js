@@ -84,7 +84,7 @@ async function run() {
             }, time);
         });
     }
-    // 1 hour in ms
+    // 1 hour in MS
     setTimeout(run, 3600000);
 }
 
