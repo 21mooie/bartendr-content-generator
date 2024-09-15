@@ -1,79 +1,75 @@
-const axios = require('axios');
 const debug = require('debug')('app:script');
 
 const Users = require('./Users');
 const Interact = require("./Interact");
-const { statusRequestConfig } = require("./utils");
 const Comments = require("./Comments");
-const bartendrUrl = process.env.BARTENDR_URL;
 
-function run() {
-    setInterval(async () => {
-        // pick some existing users/new users
-        const users = await new Promise((resolve) => {
+async function run() {
+    // pick some existing users/new users
+    const users = await new Promise((resolve) => {
+        setTimeout(() => {
+            Users.getUsers(10, 'random', 'isBot').then(result => resolve(result));
+        }, time);
+    });
+    // create some new users
+    if(!dryrun) {
+        const newUsers = await new Promise((resolve) => {
             setTimeout(() => {
-                Users.getUsers(10, 'random', 'isBot').then(result => resolve(result));
+                Users.createNewUsers(3).then(result => resolve(result));
             }, time);
         });
-        // create some new users
-        if(!dryrun) {
-            const newUsers = await new Promise((resolve) => {
-                setTimeout(() => {
-                    Users.createNewUsers(3).then(result => resolve(result));
-                }, time);
-            });
-            users.push(...newUsers);    
-        }
+        users.push(...newUsers);    
+    }
 
-        // create content to post for cocktail comments
-        const comments = await new Promise(resolve => {
+    // create content to post for cocktail comments
+    const comments = await new Promise(resolve => {
+        setTimeout(() => {
+            Comments.getAllComments(users).then(result => resolve(result));
+        }, time);
+    });
+
+    if(!dryrun) {
+        const newComments = await new Promise(resolve => {
             setTimeout(() => {
-                Comments.getAllComments(users).then(result => resolve(result));
-            }, time);
+                Comments.makeUsersPostComments(users).then(result => resolve(result));
+            }, time)
         });
+        comments.push(...newComments);
+    }
+    // create statuses with users
+    const statuses = await new Promise(resolve => {
+        setTimeout(() => {
+            Comments.getAllStatuses(users).then(result => resolve(result));
+        }, time);
+    })
 
-        if(!dryrun) {
-            const newComments = await new Promise(resolve => {
-                setTimeout(() => {
-                    Comments.makeUsersPostComments(users).then(result => resolve(result));
-                }, time)
-            });
-            comments.push(...newComments);
-        }
-        // create statuses with users
-        const statuses = await new Promise(resolve => {
+    if(!dryrun) {
+        const newStatuses = await new Promise(resolve => {
             setTimeout(() => {
-                Comments.getAllStatuses(users).then(result => resolve(result));
-            }, time);
-        })
+                Comments.makeUsersPostStatuses(users).then(result => resolve(result));
+            }, time)
+        });
+        statuses.push(...newStatuses);
+    }
 
-        if(!dryrun) {
-            const newStatuses = await new Promise(resolve => {
-                setTimeout(() => {
-                    Comments.makeUsersPostStatuses(users).then(result => resolve(result));
-                }, time)
-            });
-            statuses.push(...newStatuses);
-        }
-
-        // interact with content
-        if(!dryrun) {
+    // interact with content
+    if(!dryrun) {
         await new Promise(resolve => {
             setTimeout(() => {
-                    Interact.makeUsersInteract(users, statuses).then(() => resolve());
+                Interact.makeUsersInteract(users, statuses).then(() => resolve());
             }, time)
         });
 
-            await new Promise(resolve => {
-                setTimeout(() => {
-                    Interact.makeUsersInteract(users, comments).then(() => resolve());
-                }, time)
-            });
-        }
+        await new Promise(resolve => {
+            setTimeout(() => {
+                Interact.makeUsersInteract(users, comments).then(() => resolve());
+            }, time)
+        });
+    }
 
 
-        // reply to some existing content
-        if(!dryrun) {
+    // reply to some existing content
+    if(!dryrun) {
         await new Promise(resolve => {
             setTimeout(() => {
                 Comments.makeUsersReplyToComments(users, statuses);
@@ -81,14 +77,15 @@ function run() {
             }, time);
         });
 
-            await new Promise(resolve => {
-                setTimeout(() => {
-                    Comments.makeUsersReplyToComments(users, comments);
-                    resolve();
-                }, time);
-            });
-        }
-    }, 1000);
+        await new Promise(resolve => {
+            setTimeout(() => {
+                Comments.makeUsersReplyToComments(users, comments);
+                resolve();
+            }, time);
+        });
+    }
+    // 1 hour in ms
+    setTimeout(run, 3600000);
 }
 
 const dryrun = process.argv[2] === '--dryrun';
