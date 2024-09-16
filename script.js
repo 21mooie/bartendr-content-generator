@@ -1,7 +1,7 @@
 const debug = require('debug')('app:script');
 
 const Users = require('./Users');
-const Interact = require("./interact");
+const Interact = require('./Interact');
 const Comments = require("./Comments");
 
 async function run() {
