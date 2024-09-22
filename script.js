@@ -84,7 +84,8 @@ async function run() {
             }, time);
         });
     }
-    // 1 hour in MS
+    debug('Waiting 1 hour until next run');
+    //1 hour in MS
     setTimeout(run, 3600000);
 }
 
