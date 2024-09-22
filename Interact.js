@@ -1,4 +1,3 @@
-
 const axios                = require("axios");
 const debug                = require('debug')('app:Interact');
 const { linenumber }       = require('@everymundo/linenumber');

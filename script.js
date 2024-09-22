@@ -1,7 +1,7 @@
 const debug = require('debug')('app:script');
 
 const Users = require('./Users');
-const Interact = require("./Interact");
+const Interact = require('./Interact');
 const Comments = require("./Comments");
 
 async function run() {
@@ -84,7 +84,8 @@ async function run() {
             }, time);
         });
     }
-    // 1 hour in ms
+    debug('Waiting 1 hour until next run');
+    // 1 hour in MS
     setTimeout(run, 3600000);
 }
 
