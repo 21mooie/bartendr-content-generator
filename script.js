@@ -28,14 +28,14 @@ async function run() {
         }, time);
     });
 
-    if(!dryrun) {
-        const newComments = await new Promise(resolve => {
-            setTimeout(() => {
-                Comments.makeUsersPostComments(users).then(result => resolve(result));
-            }, time)
-        });
-        comments.push(...newComments);
-    }
+    // if(!dryrun) {
+    //     const newComments = await new Promise(resolve => {
+    //         setTimeout(() => {
+    //             Comments.makeUsersPostComments(users).then(result => resolve(result));
+    //         }, time)
+    //     });
+    //     comments.push(...newComments);
+    // }
     // create statuses with users
     const statuses = await new Promise(resolve => {
         setTimeout(() => {

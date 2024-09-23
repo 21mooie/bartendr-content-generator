@@ -168,8 +168,8 @@ class Comments {
                 setTimeout(async () => {
                     const drink = await this.findDrink()
                     let comments = await this.getComments(drink);
-                    if (comments.length < 10)
-                        comments = await this.postAllComments(users, getRandomInt(users.length), drink, null);
+                    // if (comments.length < 10)
+                    //     comments = await this.postAllComments(users, getRandomInt(users.length), drink, null);
                     resolveStatus(comments);
                 }, 5000);
             }));
