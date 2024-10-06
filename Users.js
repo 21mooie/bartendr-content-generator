@@ -62,7 +62,7 @@ class Users {
 
         const createAWSCognitoUser = () => {
             const attributeList = [];
-            const email = 'user@example.com';
+            const email = 'muatankosi10@gmail.com';
             const dataEmail = {
                 Name : 'email',
                 Value : email,

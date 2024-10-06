@@ -40,7 +40,7 @@ class Interact {
             case 'STATUS_COMMENT': {
                 requestBody.statusId = comment.statusId;
                 requestBody.statusOwnerUid = comment.statusOwnerUid;
-                requestBody.commentId = comment.statusId;
+                requestBody.statusId = comment.statusId;
                 break;
             }
             default: {

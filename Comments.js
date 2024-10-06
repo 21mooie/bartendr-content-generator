@@ -23,7 +23,7 @@ class Comments {
         });
 
         return Promise.allSettled(promises)
-            .then(results => results.filter((result) => result.status === 'fulfilled' && result.value.success === 'SUCCESSFULLY_POST_COMMENTS').map((result) => result.value))
+            .then(results => results.filter((result) => result.status === 'fulfilled' && result.value.success === 'SUCCESSFULLY_POST_COMMENTS').map((result) => result.value.comment))
             .catch(err => {
                 debug(`Line: ${linenumber()}\nError creating statuses ${err}`);
                 return [];
@@ -74,7 +74,7 @@ class Comments {
         }
         return Promise.allSettled(promises)
             .then(results => {
-                const data = results.filter((result) => result.status === 'fulfilled' && result.value.length > 0).map(result => result.value);
+                const data = results.filter((result) => result.status === 'fulfilled' && result.value.length > 0).map(result => result.value.comment);
                 const comments = data.map(value => value[getRandomInt(value.length)]);
                 return comments;
             })
@@ -126,6 +126,7 @@ class Comments {
                 "Give me ten different statuses a user may write on a social media app about nightlife and cocktails and be specific about any names of bars or names of drinks used in the status but do not use asterisks and it is ok to use emojis but not in every status. Make sure each status has a | after it except the last one and do not number the statuses."
             ];
             const prompt = prompts[getRandomInt(prompts.length)];
+            debug('Generating statuses');
             const result = await model.generateContent(prompt);
             const text = result.response.text();
             const responses = text.split('|').map(val => val.trim());
@@ -138,6 +139,7 @@ class Comments {
     async generateComments(drink, numComments) {
         try {
             const prompt = `Generate ${numComments} different social media users may have to say about the drink ${drink.strDrink} such as how much they like it, the first time they tasted it, different ways they like to make it, or a funny story they have where they were drinking it but do not use asterisks and it is ok to use emojis but not in every status. Make sure each comment has a | after it except the last one and do not number the comments.`;
+            debug('Generating comments');
             const result = await model.generateContent(prompt);
             const text = result.response.text();
             return text.split('|').filter(val => val !== '').map(val => val.trim());
@@ -150,6 +152,7 @@ class Comments {
         try {
             let prompt = `Generate one reply a user may have to each to the following comments without asterisks and without stating the initial comment again and do not number the statuses:\n`;
             comments.forEach(comment => prompt += `${comment.content}\n`);
+            debug('Generating replies');
             const result = await model.generateContent(prompt);
             const text = result.response.text();
             let responses = text.split('\n').map(val => val.trim());
@@ -168,8 +171,6 @@ class Comments {
                 setTimeout(async () => {
                     const drink = await this.findDrink()
                     let comments = await this.getComments(drink);
-                    if (comments.length < 10)
-                        comments = await this.postAllComments(users, getRandomInt(users.length), drink, null);
                     resolveStatus(comments);
                 }, 5000);
             }));
@@ -263,8 +264,8 @@ class Comments {
             return [];
         const promises = [];
         replies.forEach((reply, idx) => {
-            const user = users[idx];
-            promises.push(new Promise((resolveStatus, rejectStatus) => this.postStatus(user, reply, statuses[idx].commentId, statuses[idx].statusId, statuses[idx].statusOwnerUid, resolveStatus, rejectStatus)));           
+            const user = users[getRandomInt(users.length)];
+            promises.push(new Promise((resolveStatus, rejectStatus) => this.postStatus(user, reply, statuses[idx].statusId, statuses[idx].statusId, statuses[idx].statusOwnerUid, resolveStatus, rejectStatus)));           
         });
 
         return Promise.allSettled(promises)
