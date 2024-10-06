@@ -12,14 +12,14 @@ async function run() {
         }, time);
     });
     // create some new users
-    if(!dryrun) {
-        const newUsers = await new Promise((resolve) => {
-            setTimeout(() => {
-                Users.createNewUsers(3).then(result => resolve(result));
-            }, time);
-        });
-        users.push(...newUsers);    
-    }
+    // if(!dryrun) {
+    //     const newUsers = await new Promise((resolve) => {
+    //         setTimeout(() => {
+    //             Users.createNewUsers(3).then(result => resolve(result));
+    //         }, time);
+    //     });
+    //     users.push(...newUsers);    
+    // }
 
     // create content to post for cocktail comments
     const comments = await new Promise(resolve => {
@@ -77,12 +77,12 @@ async function run() {
             }, time);
         });
 
-        await new Promise(resolve => {
-            setTimeout(() => {
-                Comments.makeUsersReplyToComments(users, comments);
-                resolve();
-            }, time);
-        });
+        // await new Promise(resolve => {
+        //     setTimeout(() => {
+        //         Comments.makeUsersReplyToComments(users, comments);
+        //         resolve();
+        //     }, time);
+        // });
     }
     debug('Waiting 1 hour until next run');
     //1 hour in MS
