@@ -63,20 +63,17 @@ class Comments {
 
     async makeUsersPostComments(users) {
         const promises = [];
-        for (let i=0; i<10; i++){
-            promises.push(new Promise((resolveStatus) => {
-                setTimeout(async () => {
-                    const drink = await this.findDrink()
-                    const comments = await this.postAllComments(users, getRandomInt(users.length), drink, null);
-                    resolveStatus(comments);
-                }, 5000);
-            }));
-        }
+        promises.push(new Promise((resolveStatus) => {
+            setTimeout(async () => {
+                const drink = await this.findDrink()
+                const comments = await this.postAllComments(users, getRandomInt(users.length), drink, null);
+                resolveStatus(comments);
+            }, 5000);
+        }));
         return Promise.allSettled(promises)
             .then(results => {
-                const data = results.filter((result) => result.status === 'fulfilled' && result.value.length > 0).map(result => result.value.comment);
-                const comments = data.map(value => value[getRandomInt(value.length)]);
-                return comments;
+                const data = results.filter((result) => result.status === 'fulfilled' && result.value.length > 0);
+                return data[0].value;
             })
             .catch(err => {
                 debug(`Line: ${linenumber()}\nError getting comments ${err}`);
@@ -258,14 +255,22 @@ class Comments {
         resolveStatus(data);
     }
 
-    async makeUsersReplyToComments(users, statuses) {
-        const replies = await this.generateReplies(statuses);
+    async makeUsersReplyToComments(users, comments) {
+        const commentType = comments[0].commentId ? 'IDDRINK_COMMENT' : 'STATUS_COMMENT';
+        const replies = await this.generateReplies(comments);
         if (!replies || replies.length === 0)
             return [];
         const promises = [];
         replies.forEach((reply, idx) => {
             const user = users[getRandomInt(users.length)];
-            promises.push(new Promise((resolveStatus, rejectStatus) => this.postStatus(user, reply, statuses[idx].statusId, statuses[idx].statusId, statuses[idx].statusOwnerUid, resolveStatus, rejectStatus)));           
+            if (commentType === 'IDDRINK_COMMENT') {
+                promises.push( new Promise((resolve) => {
+                    const data = this.postComment(user, comment.idDrink, reply, comment.commentId);
+                    resolve(data)
+                }))
+            } else {
+                promises.push(new Promise((resolveStatus, rejectStatus) => this.postStatus(user, reply, comments[idx].statusId, comments[idx].statusId, comments[idx].statusOwnerUid, resolveStatus, rejectStatus)));           
+            }
         });
 
         return Promise.allSettled(promises)
