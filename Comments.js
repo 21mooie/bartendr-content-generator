@@ -63,13 +63,17 @@ class Comments {
 
     async makeUsersPostComments(users) {
         const promises = [];
-        promises.push(new Promise((resolveStatus) => {
-            setTimeout(async () => {
-                const drink = await this.findDrink()
-                const comments = await this.postAllComments(users, getRandomInt(users.length), drink, null);
-                resolveStatus(comments);
-            }, 5000);
-        }));
+        let time = 0;
+        for (let i=0; i<users.length; i++) {
+            promises.push(new Promise((resolveStatus) => {
+                setTimeout(async () => {
+                    const drink = await this.findDrink()
+                    const comments = await this.postAllComments(users, getRandomInt(users.length), drink, null);
+                    resolveStatus(comments);
+                }, time);
+            }));
+            time += 5000;
+        }
         return Promise.allSettled(promises)
             .then(results => {
                 const data = results.filter((result) => result.status === 'fulfilled' && result.value.length > 0);
