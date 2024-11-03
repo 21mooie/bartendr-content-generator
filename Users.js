@@ -94,7 +94,6 @@ class Users {
     async getUsers(numUsers, type, criteria) {
         let result;
         try {
-            debug('Requesting Users...');
             result = await axios.get(`${this.bartendrUrl}/users/multiple`, {
                 params: {
                     numUsers,

@@ -99,6 +99,7 @@ class Comments {
             return result.data;
         } catch (err) {
             debug(`Line: ${linenumber()}\nError posting comment\n${err}`);
+            return err;
         }
     }
 
@@ -134,13 +135,13 @@ class Comments {
             return responses;
         } catch (err) {
             debug(`Line: ${linenumber()}\nError generating status\n${err}`);
+            debug('No new statuses will be generated');
         }
     }
 
     async generateComments(drink, numComments) {
         try {
             const prompt = `Generate ${numComments} different social media users may have to say about the drink ${drink.strDrink} such as how much they like it, the first time they tasted it, different ways they like to make it, or a funny story they have where they were drinking it but do not use asterisks and it is ok to use emojis but not in every status. Make sure each comment has a | after it except the last one and do not number the comments.`;
-            debug('Generating comments');
             const result = await model.generateContent(prompt);
             const text = result.response.text();
             return text.split('|').filter(val => val !== '').map(val => val.trim());
@@ -153,19 +154,17 @@ class Comments {
         try {
             let prompt = `Generate one reply a user may have to each to the following comments without asterisks and without stating the initial comment again and do not number the statuses:\n`;
             comments.forEach(comment => prompt += `${comment.content}\n`);
-            debug('Generating replies');
             const result = await model.generateContent(prompt);
             const text = result.response.text();
             let responses = text.split('\n').map(val => val.trim());
             responses.pop();
             return responses;
         } catch(err){
-            debug(`Line: ${linenumber()}\nError generating reply\n${err}`);
+            debug(`Line: ${linenumber()}\nError generating replies\n${err}`);
         }
     }
 
-    async getAllComments(users) {
-        debug('Requesting comments...')
+    async getAllComments() {
         const promises = [];
         for (let i=0; i<10; i++){
             promises.push(new Promise((resolveStatus) => {
@@ -219,7 +218,6 @@ class Comments {
     }
 
     async getAllStatuses(users) {
-        debug('Requesting Statuses...');
         const promises = [];
         users.forEach((user) => {
             promises.push(new Promise((resolveStatus) => {
@@ -266,12 +264,12 @@ class Comments {
             return [];
         const promises = [];
         replies.forEach((reply, idx) => {
+            const comment = comments[idx%comments.length];
             const user = users[getRandomInt(users.length)];
             if (commentType === 'IDDRINK_COMMENT') {
                 promises.push( new Promise((resolve) => {
-                    const data = this.postComment(user, comment.idDrink, reply, comment.commentId);
-                    resolve(data)
-                }))
+                    this.postComment(user, { idDrink: comment.idDrink }, reply, comment.commentId).then(data => resolve(data)).catch(err => resolve({}));
+                }));
             } else {
                 promises.push(new Promise((resolveStatus, rejectStatus) => this.postStatus(user, reply, comments[idx].statusId, comments[idx].statusId, comments[idx].statusOwnerUid, resolveStatus, rejectStatus)));           
             }
@@ -279,7 +277,76 @@ class Comments {
 
         return Promise.allSettled(promises)
             .then(results => results.filter((result) => result.status === 'fulfilled' && result.value.success === 'SUCCESSFULLY_POST_COMMENTS').map((result) => result.value))
-            .catch(err => debug(`Line: ${linenumber()}\nError creating statuses ${err}`));
+            .catch(err => debug(`Line: ${linenumber()}\nError creating replies ${err}`));
+    }
+
+    async getCollectionName(collectionInfo) {
+        try {
+            const response = await axios.get(
+                `${this.bartendrUrl}/${collectionInfo}/collectionName`,
+                {
+                    headers: { ...statusRequestConfig.headers },
+                });
+            return response.data;
+        } catch (err) {
+            debug(`Error:\n${err}`);
+            return 'unknown';
+        }
+    }
+
+    async logCollectionNameForComment(comments) {
+        comments.forEach(async (comment) => {
+            debug({
+                commentId: comment.commentId,
+                content: comment.content,
+                idDrink: comment.idDrink,
+                hasReplies: comment.hasReplies,
+                numLikes: comment.numLikes,
+                numDislikes: comment.numDislikes,
+                commenterUId: comment.commenterUid,
+                collectionName:  await this.getCollectionName(`cocktail/${comment.idDrink}`),
+            });
+        });
+    }
+
+    async logCollectionNameForStatuses(statuses) {
+        statuses.forEach(async (status) => {
+            debug({
+                statusId: status.statusId,
+                content: status.content,
+                hasReplies: status.hasReplies,
+                numLikes: status.numLikes,
+                numDislikes: status.numDislikes,
+                collectionName: await this.getCollectionName(`users/statuses/${status.statusOwnerUid}`),
+            })
+        });
+    }
+
+    async logCollectionNameForCommentReplies(replies) {
+        replies.forEach(async (replyStructure) => {
+            const reply = replyStructure.comment;
+            debug({
+                commentId: reply.commentId,
+                content: reply.content,
+                parentId: reply.parentId,
+                idDrink: reply.idDrink,
+                collectionName: await this.getCollectionName(`cocktail/${reply.idDrink}`)
+            })
+        });
+    }
+
+    async logCollectionNameForStatusRelies(replies) {
+        replies.forEach(async (replyStructure) => {
+            const reply = replyStructure.comment;
+            debug({
+                statusId: reply.statusId,
+                id: reply.id,
+                commenterUid: reply.commenterUid,
+                statusOwnerUid: reply.statusOwnerUid,
+                content: reply.content,
+                collectionName: await this.getCollectionName(`users/statuses/${reply.statusOwnerUid}`),
+            })
+        });
     }
 }
 

@@ -8,9 +8,11 @@ async function run() {
     // pick some existing users/new users
     const users = await new Promise((resolve) => {
         setTimeout(() => {
+            debug('Requesting Users...');
             Users.getUsers(10, 'random', 'isBot').then(result => resolve(result));
         }, time);
     });
+
     // create some new users
     if(!dryrun) {
         const newUsers = await new Promise((resolve) => {
@@ -24,21 +26,31 @@ async function run() {
     // create content to post for cocktail comments
     const comments = await new Promise(resolve => {
         setTimeout(() => {
-            Comments.getAllComments(users).then(result => resolve(result));
+            debug('Requesting comments...');
+            Comments.getAllComments().then(result => resolve(result));
         }, time);
     });
 
     if(!dryrun) {
         const newComments = await new Promise(resolve => {
             setTimeout(() => {
+                debug('Generating comments...');
                 Comments.makeUsersPostComments(users).then(result => resolve(result));
             }, time)
         });
         comments.push(...newComments);
     }
+
+    // log collection names for discovery
+    await new Promise(resolve => {
+        debug('Logging comments being used...')
+        Comments.logCollectionNameForComment(comments).then(resolve());
+    });
+
     // create statuses with users
     const statuses = await new Promise(resolve => {
         setTimeout(() => {
+            debug('Requesting Statuses...');
             Comments.getAllStatuses(users).then(result => resolve(result));
         }, time);
     })
@@ -46,23 +58,45 @@ async function run() {
     if(!dryrun) {
         const newStatuses = await new Promise(resolve => {
             setTimeout(() => {
+                debug('Generating Statuses...');
                 Comments.makeUsersPostStatuses(users).then(result => resolve(result));
             }, time)
         });
         statuses.push(...newStatuses);
     }
 
+    // log collection names for discovery
+    await new Promise(resolve => {
+        debug('Logging statuses being used...')
+        Comments.logCollectionNameForStatuses(statuses).then(() => {
+            if (dryrun) {
+                setTimeout(() => {
+                    debug('Waiting 1 hour until next run...');
+                    resolve();
+                }, 1000);
+            } else {
+                resolve();
+            }
+        });
+    });
+
     // interact with content
     if(!dryrun) {
         await new Promise(resolve => {
             setTimeout(() => {
-                Interact.makeUsersInteract(users, statuses).then(() => resolve());
+                debug('Users interacting with comments...');
+                Interact.makeUsersInteract(users, comments).then((results) => {
+                    Interact.logCollectionNameForCommentInteractions(results).then(() => resolve());
+                });
             }, time)
         });
 
         await new Promise(resolve => {
             setTimeout(() => {
-                Interact.makeUsersInteract(users, comments).then(() => resolve());
+                debug('Users interacting with statuses...');
+                Interact.makeUsersInteract(users, statuses).then((results) => {
+                    Interact.logCollectionNameForStatusInteractions(results).then(() => resolve());
+                });
             }, time)
         });
     }
@@ -70,21 +104,31 @@ async function run() {
 
     // reply to some existing content
     if(!dryrun) {
+
         await new Promise(resolve => {
             setTimeout(() => {
-                Comments.makeUsersReplyToComments(users, statuses);
-                resolve();
+                debug('Users replying to comments...');
+                Comments.makeUsersReplyToComments(users, comments).then(results => {
+                    Comments.logCollectionNameForCommentReplies(results).then(() => resolve());
+                });
             }, time);
         });
 
         await new Promise(resolve => {
             setTimeout(() => {
-                Comments.makeUsersReplyToComments(users, comments);
+                debug('Users replying to statuses...');
+                Comments.makeUsersReplyToComments(users, statuses).then(results => {
+                    Comments.logCollectionNameForStatusRelies(results).then(() => {
+                        setTimeout(() => {
+                            debug('Waiting 1 hour until next run...');
+                            resolve();
+                        }, 1000);
+                    });
+                });
                 resolve();
             }, time);
         });
     }
-    debug('Waiting 1 hour until next run');
     //1 hour in MS
     setTimeout(run, 3600000);
 }
