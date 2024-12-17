@@ -14,14 +14,14 @@ async function run() {
     });
 
     // create some new users
-    if(!dryrun) {
-        const newUsers = await new Promise((resolve) => {
-            setTimeout(() => {
-                Users.createNewUsers(3).then(result => resolve(result));
-            }, time);
-        });
-        users.push(...newUsers);    
-    }
+    // if(!dryrun) {
+    //     const newUsers = await new Promise((resolve) => {
+    //         setTimeout(() => {
+    //             Users.createNewUsers(3).then(result => resolve(result));
+    //         }, time);
+    //     });
+    //     users.push(...newUsers);    
+    // }
 
     // create content to post for cocktail comments
     const comments = await new Promise(resolve => {
